@@ -36,7 +36,7 @@ automatically using pip_.
 * Numpy_ 1.13.3 or newer
 * Scipy_ 1.1.0 or newer
 * Sklearn_ 0.19.1 or newer
-* ASE_ 3.16.0 or newer
+* ASE_ 3.16.0 recommended (newer versions have trouble reading RASPA generated PDB files).
 * PYEVTK_ 1.1.1 or newer
 * Pandas_ 0.20.3 or newer
 * Numba_ 0.35 or newer

@@ -31,7 +31,7 @@ setup(
     author_email='arungopalan2020@u.northwestern.edu',      # Author email
     # version='1.0.0',
     url='https://github.com/arung-northwestern/pyIsoP',  # Website
-    install_requires=["numpy>=1.13.3", "ase>=3.16", "tqdm>=4.15", "pyevtk==1.1.1","pandas>=0.20.3","numba>=0.35","scikit-learn>=0.19.1","scipy>=1.1.0","pytest>=5.0.1"],              # Required packages, pulls from pip if needed; do not use for Conda deployment
+    install_requires=["numpy>=1.13.3", "ase==3.16", "tqdm>=4.15", "pyevtk==1.1.1","pandas>=0.20.3","numba>=0.35","scikit-learn>=0.19.1","scipy>=1.1.0","pytest>=5.0.1"],              # Required packages, pulls from pip if needed; do not use for Conda deployment
     platforms=['Linux','Unix', 'Windows'],            # Valid platforms your code works on, adjust to your flavor
     python_requires=">=3.6",          # Python version restrictions
 

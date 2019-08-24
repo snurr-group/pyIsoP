@@ -25,9 +25,9 @@ distribution in the forcefield directory.
 
         ####################################################################
         # Calculate the grid
-        t1=grid3D('ZIF-4_mod.cif',spacing=0.5)          # Intialize grid3D object
-        f1=forcefields(t1, force_field='C:/PyIsoP/forcefield/UFF', sigma=3.95, epsilon=46)      # Update the force field details to grid obj. t1
-        t2= grid3D.grid_calc(t1,"lj",f1)                          # Save to different object or overwrite the existing object with computed 3D grid.
+        t1=grid3D.grid3D('ZIF-4_mod.cif',spacing=0.5)          # Intialize grid3D object
+        f1=forcefields.forcefields(t1, force_field='C:/PyIsoP/forcefield/UFF', sigma=3.95, epsilon=46)      # Update the force field details to grid obj. t1
+        t2= grid3D.grid3D.grid_calc(t1,"lj",f1)                          # Save to different object or overwrite the existing object with computed 3D grid.
 
         # Save coordinates for visualizing later
         writer.writer.write_vts(t2,'zif-4_grid')                   # Write a binary vtk file
@@ -62,25 +62,25 @@ All the energies should be in the units of [K] to ensure consistency with the RA
 .. code-block:: python
 
         import pyIsoP.histo as histo                 # import the histogram module
-        h = histo()                                     # initialize a histo object
-        h = histo.grid2histo(t2, h)            # update (overwrite) the histo object with histogram calculated from the grid3D object t2  
+        h = histo.histo()                                     # initialize a histo object
+        h = histo.histo.grid2histo(t2, h)            # update (overwrite) the histo object with histogram calculated from the grid3D object t2  
 
 2.  Read in the energy grid from a RASPA_ style .grid file, with x, y, z, E data or from  .cube file. 
 
 .. code-block:: python
 
         import pyIsoP.histo as histo                 # import the histogram module
-        h = histo()                                     # initialize a histo object
-        h = histo.raspa2histo('raspa_grid_filename.grid' , ,h)            # update (overwrite) the histo object with histogram calculated from the RASPA grid file.
-        h = histo.cube2histo('cube_filename.cube',h)            # update (overwrite) the histo object with histogram calculated from a .cube file
+        h = histo.histo()                                     # initialize a histo object
+        h = histo.histo.raspa2histo('raspa_grid_filename.grid' , ,h)            # update (overwrite) the histo object with histogram calculated from the RASPA grid file.
+        h = histo.histo.cube2histo('cube_filename.cube',h)            # update (overwrite) the histo object with histogram calculated from a .cube file
 
 3. Read in the histogram as two column text file with no header. Bin-centers in one column,  normalized histogram in the other column.
 
 .. code-block:: python
 
         import pyIsoP.histo as histo                 # import the histogram module
-        h = histo()                                     # initialize a histo object
-        h = histo..file2histo('text_filename.dat', h)            # update (overwrite) the histo object with histogram calculated from the RASPA_ grid file.
+        h = histo.histo()                                     # initialize a histo object
+        h = histo.histo..file2histo('text_filename.dat', h)            # update (overwrite) the histo object with histogram calculated from the RASPA_ grid file.
 
 
 .. _machlearn:
@@ -106,8 +106,8 @@ a pre-trained model at 77 K which can predict the hydrogen coordination numbers 
 
         import pyIsoP.machlearn as machlearn
 
-        m1= machlearn(restarts=2)                          # Initialize object with  2 optimizer restarts
-        m1 = machlearn.GPR4n1( m1, 'file_with_data.csv', 0.9)   # Train the model with 90 % training and 10 % Testing
+        m1= machlearn.machlearn(restarts=2)                          # Initialize object with  2 optimizer restarts
+        m1 = machlearn.machlearn.GPR4n1( m1, 'file_with_data.csv', 0.9)   # Train the model with 90 % training and 10 % Testing
         n1 = m1.predict([logP, VF, LCD,PLD])           # Predict at your temperature for a set of  feature values for log10(pressure), void fraction, LCD and PLD in angstroms.
 
 
@@ -123,8 +123,8 @@ and predicts the adsorption isotherm in the units of grams per liter of the adso
 
 .. code-block:: python
 
-        import pyIsoP.predictors as predictors
-        g_L_CH2=predictors.predict_isotherm(T,P,Vf,h,n1,epsilon=46,MA=14)
+        from pyIsoP import predictor
+        g_L_CH2=predictor.predictors.predict_isotherm(T,P,Vf,h,n1,epsilon=46,MA=14)
 
 
 .. _screening:

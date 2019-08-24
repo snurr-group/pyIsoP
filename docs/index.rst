@@ -31,6 +31,9 @@ isoenergy contours (pore surfaces) in a material. Please refer to our documentat
 .. image:: https://travis-ci.com/arung-northwestern/pyIsoP.svg?branch=master
     :target: https://travis-ci.com/arung-northwestern/pyIsoP
 
+.. image:: https://badge.fury.io/py/pyIsoP.svg
+    :target: https://badge.fury.io/py/pyIsoP
+
 
 
 
@@ -75,7 +78,13 @@ Source Code Reference
 
 ** Acknowledgements: 
     Andrew Rosen, Snurr Research Group, Northwestern Univerisity.
-    Project based on the [Computational Molecular Science Python Cookiecutter_ version 1.0.
+    Project based on the Computational Molecular Science Python Cookiecutter_ version 1.0.
+    
+    This work is supported by the U.S. Department of Energy, Office of Basic 
+    Energy Sciences, Division of Chemical Sciences, Geosciences and 
+    Biosciences through the Nanoporous Materials Genome Center under award 
+    DE-FG02-17ER16362.
+
 
 .. _Cookiecutter: https://github.com/molssi/cookiecutter-cms
 
