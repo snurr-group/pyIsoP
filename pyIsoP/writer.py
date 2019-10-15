@@ -126,7 +126,7 @@ class writer:
         f1.close()
 
     # * Write the grid to vtk in unstructured points format
-    def write_vts(grid_obj, path_to_file):
+    def write_vts(grid_obj, path_to_file, nx_cells, ny_cells, nz_cells):
         """ 
         Write the energy grid as a binary vtk (.vts) file.
 
@@ -166,7 +166,7 @@ class writer:
                                 [x[i, j, k], y[i, j, k], z[i, j, k]] = np.dot(
                                     grid_obj.A, [x[i, j, k], y[i, j, k], z[i, j, k]])
         #Write pot into .vts file
-        gridToVTK(path_to_file, x, y, z, pointData={"Potential": grid_obj.pot_repeat})
+        gridToVTK(path_to_file, x, y, z, pointData={"Potential": np.tile(grid_obj.pot, (nx_cells, ny_cells, nz_cells))})
 
     # * Converts the RASPA grid file into a vtk file, excluding the derivatives.
     def RASPA2vts(input_file, output_file):
@@ -202,37 +202,39 @@ class writer:
         pointToVTK(output_file, x, y, z, pointData={"energy": energy})
 
     
-    # * Function to write the detected energy minima as an xyz file for visualization
-    def write_minima(grid_obj, path_to_file):
+    # * Function to write the detected energy minima as an xyz file for 
+    # !  We have to redo the minima calculation using image processing algorithms.
+    # def write_minima(grid_obj, path_to_file):
         
     
-        """ 
-        Writes all the minima which are negative in energy to a xyz file
+    #     """ 
+    #     Writes all the minima which are negative in energy to a xyz file
         
-        :type grid_obj: Instance of the grid3D class
-        :param grid_obj: The gird object of the material you want the minima printed out of
+    #     :type grid_obj: Instance of the grid3D class
+    #     :param grid_obj: The gird object of the material you want the minima printed out of
     
-        :type minima_positions: array of floats of shape (3,number_of_local_minima) from  the detect local minima function
-        :param minima_positions: contains the i,j,k indices of all the local minima 
+    #     :type minima_positions: array of floats of shape (3,number_of_local_minima) from  the detect local minima function
+    #     :param minima_positions: contains the i,j,k indices of all the local minima 
     
-        :type path_to_file: str
-        :param path_to_file: path ot the output xyz file
+    #     :type path_to_file: str
+    #     :param path_to_file: path ot the output xyz file
     
-        :raises:
+    #     :raises:
     
-        :rtype: Nothing, just writes the file.
-        """
-        import imp
-        import numpy as np
-        import grid3D
-        xyz_mod = imp.load_source('xyz', 'xyz.py')  # A single file to make xyz file writing easy
+    #     :rtype: Nothing, just writes the file.
+    #     """
+    #     import imp
+    #     import numpy as np
+    #     import grid3D
+    #     xyz_mod = imp.load_source('xyz', 'xyz.py')
+    #     import pyisop.xyz as xyz_mod  # A single file to make xyz file writing easy
 
-        min_, en_ = grid3D.grid3D.find_minima(grid_obj)
+    #     min_, en_ = grid3D.grid3D.find_minima(grid_obj)
         
-        f1        = open(path_to_file, 'w')
-        min_neg   = min_[np.reshape(en_<0,(len(en_),))]
-        xyz_mod.write_xyz(f1, min_neg, title='minima', atomtypes='X')
-        f1.close()
+    #     f1        = open(path_to_file, 'w')
+    #     min_neg   = min_[np.reshape(en_<0,(len(en_),))]
+    #     xyz_mod.write_xyz(f1, min_neg, title='minima', atomtypes='X')
+    #     f1.close()
     # * Write the repeated framework coordinates into which ever format you want using ASE
     def write_frame(grid_obj,path_to_file):
 

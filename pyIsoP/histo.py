@@ -63,7 +63,7 @@ class histo:
         import numpy as np
 
         hist_obj.name                                                 = grid_obj.file
-        e_vals                                                        = np.reshape(grid_obj.pot_repeat, (grid_obj.N_grid_total, 1), order='C')
+        e_vals                                                        = np.reshape(grid_obj.pot, (grid_obj.nx*grid_obj.ny*grid_obj.nz, 1), order='C')
         e_vals  = e_vals/grid_obj.Temperature # Reduced units for energy
         e_vals = e_vals[~np.isnan(e_vals)]
         bins1                                                         = np.linspace(min(e_vals)-0.5, hist_obj.E_max/grid_obj.Temperature , hist_obj.nbins+1)

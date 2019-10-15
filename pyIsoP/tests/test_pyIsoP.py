@@ -25,6 +25,17 @@ def compute_grid():
         return t2
 #%%
 @pytest.fixture
+def compute_grid_dask():
+        import os
+        from pyIsoP import grid3D, forcefields, writer
+        path_to_file = os.path.dirname(pyIsoP.__file__)+'/data/ZIF-4_mod.cif'
+        t1=grid3D.grid3D(path_to_file,spacing=0.5 )
+        f1=forcefields.forcefields(t1,sigma=3.95, epsilon=46,forcefield=os.path.dirname(pyIsoP.__file__)+'/../forcefield/UFF')
+        grid_dask= grid3D.grid3D.grid_calc_dask(t1,f1)
+        t1.pot=grid_dask.compute()
+        return t1       
+#%%
+@pytest.fixture
 def compute_ml():
         import os
         import pyIsoP   
@@ -45,9 +56,14 @@ def compute_histo(compute_grid):
 def test_grid_values(compute_grid):
         import numpy as np
         print("Testing the energy grid calculation")
-        print(str(np.min(compute_grid.pot_repeat))), "Energy minimum looks good!"
-        assert np.abs(np.min(np.round(compute_grid.pot_repeat, decimals=2)+1819.74)<=1E-4), "Grid minimum does not match reference"
+        print(str(np.min(compute_grid.pot))), "Energy minimum looks good!"
+        assert np.abs(np.min(np.round(compute_grid.pot, decimals=2)+1819.74)<=1E-4), "Grid minimum does not match reference"
 #     assert(np.max(compute_grid.pot_repeat)==)
+#%%
+
+def test_grid_values_dask(compute_grid_dask):
+        test_grid_values(compute_grid_dask)
+
 #%%
 def test_write_grid(compute_grid):
         import pyIsoP
@@ -59,9 +75,13 @@ def test_write_grid(compute_grid):
         path_to_out_vtk = os.path.dirname(pyIsoP.__file__)+'/data/zif-4_grid'
         path_to_out_pdb = os.path.dirname(pyIsoP.__file__)+'/data/zif-4_replicated.pdb'
         print("Writing .vts and .pdb tests into the data folder")
-        writer.writer.write_vts(compute_grid,path_to_out_vtk)
+        writer.writer.write_vts(compute_grid,path_to_out_vtk, 1,1,1)
         writer.writer.write_frame(compute_grid,path_to_out_pdb)
         #should we assert something..?
+#%%
+def test_write_grid_dask(compute_grid_dask):
+        test_write_grid(compute_grid_dask)
+
 #%%
 def test_histo_vals(compute_histo):
         import numpy as np

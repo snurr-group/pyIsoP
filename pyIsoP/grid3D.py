@@ -12,7 +12,7 @@ class grid3D(object):
       ! Does not include the electrostatics
 
     """
-
+    from numba import vectorize
     # * Initialize the grid object
     def __init__(self, cif_file, spacing=1.0, cutoff=12.8, temperature=77.0, index=None):
         """ 
@@ -145,7 +145,7 @@ class grid3D(object):
                 self.mof_atm_names.append(frame_repeat.get_chemical_symbols()[i])
 
         self.pot = np.zeros((self.nx, self.ny, self.nz))
-        self.pot_repeat = np.tile(self.pot, (self.nx_cells, self.ny_cells, self.nz_cells))
+        # self.pot_repeat = np.tile(self.pot, (self.nx_cells, self.ny_cells, self.nz_cells))
         # * Total points
         self.nx_total = int(self.nx*self.nx_cells)
         self.ny_total = int(self.ny*self.ny_cells)
@@ -161,25 +161,115 @@ class grid3D(object):
         self.X = np.linspace(0, 1, self.nx_total)
         self.Y = np.linspace(0, 1, self.ny_total)
         self.Z = np.linspace(0, 1, self.nz_total)
-        self.x = np.zeros((self.nx_total, self.ny_total, self.nz_total))
-        self.y = np.zeros((self.nx_total, self.ny_total, self.nz_total))
-        self.z = np.zeros((self.nx_total, self.ny_total, self.nz_total))
-        for k in range(self.nz_total):
-                for j in range(self.ny_total):
-                        for i in range(self.nx_total):
-                                self.x[i, j, k] = self.X[i]
-                                self.y[i, j, k] = self.Y[j]
-                                self.z[i, j, k] = self.Z[k]
-        for k in range(self.nz_total):
-                for j in range(self.ny_total):
-                        for i in range(self.nx_total):
-                                [self.x[i, j, k], self.y[i, j, k], self.z[i, j, k]] = np.dot(
-                                    self.A, [self.x[i, j, k], self.y[i, j, k], self.z[i, j, k]])
+        # self.x = np.zeros((self.nx_total, self.ny_total, self.nz_total))
+        # self.y = np.zeros((self.nx_total, self.ny_total, self.nz_total))
+        # self.z = np.zeros((self.nx_total, self.ny_total, self.nz_total))
+        # for k in range(self.nz_total):
+        #         for j in range(self.ny_total):
+        #                 for i in range(self.nx_total):
+        #                         self.x[i, j, k] = self.X[i]
+        #                         self.y[i, j, k] = self.Y[j]
+        #                         self.z[i, j, k] = self.Z[k]
+        # for k in range(self.nz_total):
+        #         for j in range(self.ny_total):
+        #                 for i in range(self.nx_total):
+        #                         [self.x[i, j, k], self.y[i, j, k], self.z[i, j, k]] = np.dot(
+        #                             self.A, [self.x[i, j, k], self.y[i, j, k], self.z[i, j, k]])
         self.ase = frame_repeat
         self.pot_sphere = []
         self.pot_total = []
         self.Temperature = temperature
+    # * Compute energy grid using Dask using the objects from PyIsoP
+    # * Currently implemented only for Lennard-Jones interactions
+    def grid_calc_dask(grid_obj, ff_obj):
+    
+      """ Description
+      :type grid_obj: PyIsoP grid object
+      :param grid_obj: contains all the information about the grid initialized using PyIsoP
+    
+      :type ff_obj: PyIsoP force field  object
+      :param ff_obj: contains all the information about the force field parameters for energy grid calculation.
+    
+      :raises:
+    
+      :rtype: Lazy evaluated 3D energy grid as a dask array. Call compute on your client to obtain actual values.
+      """  
+      # * Compute the energy at a grid point using Dask arrays as inputs
+      # ! Not to be used outside of this routine
+      def grid_point_energy(g, frameda, Ada, sigda, epsda):
+            import numpy as np
+            # Compute the energy at any grid point.
+            dr = g-frameda
+            dr = dr-np.round(dr)
+            dr = np.dot(Ada, dr.T).T
+            rsq = np.sum(dr**2, axis=1)
+            return np.sum((4*epsda) * ((sigda**12/(rsq)**6) - ((sigda)**6/(rsq)**3)))
 
+
+      # * Apply GPE over the length of the dask array
+      def apply_using_dask(t1,f1):
+          # Compute the grid for any configuration.
+          import numpy as np 
+          import dask.array as da
+          # gps = da.stack(da.meshgrid(da.linspace(-0.5,0.5, t1.nx_total), da.linspace(-0.5,0.5, t1.ny_total),da.linspace(-0.5,0.5, t1.nz_total)), -1).reshape(-1, 3)
+          gps = da.stack(da.meshgrid(t1.x_grid, t1.y_grid,t1.z_grid), -1).reshape(-1, 3) # * Only the unit cell.
+          gps =gps.rechunk(10000,3)
+          grid = da.apply_along_axis(func1d=grid_point_energy, frameda=da.from_array(t1.coord), Ada=da.from_array(t1.A), sigda=da.from_array(f1.sigma_array), epsda=da.from_array(f1.epsilon_array), axis=1, arr=gps)
+          return grid
+      import numpy as np
+      import dask.array as da
+      # * Actual one line code to compute grids from PyIsoP initialized grid, force field and potential
+      grid = apply_using_dask(grid_obj,ff_obj).reshape((grid_obj.nx,grid_obj.ny,grid_obj.nz)).rechunk(10,10,10) 
+      # grid =da.tile(grid, (np.int(grid_obj.nx_cells),np.int(grid_obj.ny_cells),np.int(grid_obj.nz_cells))) # * Use the symmetry to compute grid faster.
+      # grid =da.tile(grid, (2,2,2) # * Use the symmetry to compute grid faster.
+      return grid
+
+
+    # * Compute energy grid using Dask using the objects from PyIsoP
+    # * Currently implemented only for Lennard-Jones interactions
+    def dgrid_calc_dask(grid_obj, ff_obj):
+    
+      """ Description
+      :type grid_obj: PyIsoP grid object
+      :param grid_obj: contains all the information about the grid initialized using PyIsoP
+    
+      :type ff_obj: PyIsoP force field  object
+      :param ff_obj: contains all the information about the force field parameters for energy grid calculation.
+    
+      :raises:
+    
+      :rtype: Lazy evaluated 3D shortes distance grid as a dask array. Call compute on your client to obtain actual values.
+      """  
+      # * Compute the distance to the nearest framework atom at each grid point using Dask arrays as inputs
+      # ! Not to be used outside of this routine
+      def grid_point_distance(g, frameda, Ada, sig, sigda, epsda):
+            import numpy as np
+            # Compute the energy at any grid point.
+            dr = g-frameda
+            dr = dr-np.round(dr)
+            dr = np.dot(Ada, dr.T).T
+            rsq = np.sum(dr**2, axis=1) # * Actual center to center distance squared.
+            rsqrt = np.sqrt(rsq) # * The center to center distance
+            return np.min((rsqrt-(sigda*2-sig)*0.5)) #* Subtract the diameter of the framework atom.
+
+
+      # * Apply GPE over the length of the dask array
+      def apply_distance_using_dask(t1,f1):
+          # Compute the grid for any configuration.
+          import numpy as np 
+          import dask.array as da
+          # gps = da.stack(da.meshgrid(da.linspace(-0.5,0.5, t1.nx_total), da.linspace(-0.5,0.5, t1.ny_total),da.linspace(-0.5,0.5, t1.nz_total)), -1).reshape(-1, 3)
+          gps = da.stack(da.meshgrid(t1.x_grid, t1.y_grid,t1.z_grid), -1).reshape(-1, 3) # * Only the unit cell.
+          gps =gps.rechunk(10000,3)
+          grid = da.apply_along_axis(func1d=grid_point_distance, frameda=da.from_array(t1.coord),  Ada=da.from_array(t1.A),sig = da.from_array(f1.sigma), sigda=da.from_array(f1.sigma_array), epsda=da.from_array(f1.epsilon_array), axis=1, arr=gps)
+          return grid
+      import numpy as np
+      import dask.array as da
+      # * Actual one line code to compute distance grid from PyIsoP initialized grid and force field object
+      dgrid = apply_distance_using_dask(grid_obj,ff_obj).reshape((grid_obj.nx,grid_obj.ny,grid_obj.nz)).rechunk(10,10,10) 
+      # grid =da.tile(grid, (np.int(grid_obj.nx_cells),np.int(grid_obj.ny_cells),np.int(grid_obj.nz_cells))) # * Use the symmetry to compute grid faster.
+      # grid =da.tile(grid, (2,2,2) # * Use the symmetry to compute grid faster.
+      return dgrid
     # * Calculate the energy grid
     def grid_calc(grid_obj, potential_name, ff_obj, rmass=None, T=None):
           """ 
@@ -199,8 +289,7 @@ class grid3D(object):
 
           :rtype: Returns the 3D energy grid
           """
-
-       
+          
           import numpy as np
           import pyIsoP.potentials as potentials
           from tqdm import tqdm
@@ -291,26 +380,27 @@ class grid3D(object):
           detected_minima = local_min - eroded_background
           return np.where(detected_minima)
 
-    def find_minima(grid_obj):
-      """ 
-      Finds the locations and energy of the local minima from a pretabulated energy grid object using the detect_local_minima function.
+    # def find_minima(grid_obj):
+    #   """ 
+    #   Finds the locations and energy of the local minima from a pretabulated energy grid object using the detect_local_minima function.
       
-      :type grid_obj: instance of the grid3D class
-      :param grid_obj: contains all the information regarding the energy grid 
+    #   :type grid_obj: instance of the grid3D class
+    #   :param grid_obj: contains all the information regarding the energy grid 
 
-      :rtype: coordinates of the minima (array of floats), energy of the minima (array of floats)
-      """
-      import numpy as np
-      import grid3D
+    #   :rtype: coordinates of the minima (array of floats), energy of the minima (array of floats)
+    #   """
+    #   import numpy as np
+    #   import pyIsoPgrid3D as grid3D
 
-      lm = grid3D.grid3D.detect_local_minima(grid_obj)
-      out_coord = np.column_stack((grid_obj.x[lm], grid_obj.y[lm], grid_obj.z[lm]))
-      pot_interp = grid3D.grid3D.GridInterpolator(grid_obj)
-      en = []
-      for i in range(len(out_coord)):
-        point = np.dot(grid_obj.A_inv, out_coord[i])
-        en.append(pot_interp(np.around(point, decimals=3)))
-      #en_neg=en[en<0]
-      #min_neg=out_coord[en<0]
+    #   lm = grid3D.grid3D.detect_local_minima(grid_obj)
+    #   out_coord = np.column_stack((grid_obj.x[lm], grid_obj.y[lm], grid_obj.z[lm]))
+    #   pot_interp = grid3D.grid3D.GridInterpolator(grid_obj)
+    #   en = []
+    #   for i in range(len(out_coord)):
+    #     point = np.dot(grid_obj.A_inv, out_coord[i])
+    #     en.append(pot_interp(np.around(point, decimals=3)))
+    #   #en_neg=en[en<0]
+    #   #min_neg=out_coord[en<0]
 
-      return np.array(out_coord), np.array(en)
+    #   return np.array(out_coord), np.array(en)
+

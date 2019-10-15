@@ -4,11 +4,28 @@ A fast and accurate semi-analytic method for predicting small molecule adsorptio
 materials, ideal for high-throughput screening applications. Developed by Arun Gopalan at
 R. Q. Snurr Research Group, Northwestern University.
 """
-from setuptools import setup
+from setuptools import setup, Command
 import versioneer
 
 DOCLINES = __doc__.split("\n")
 
+# class PyTest(Command):
+#     user_options = []
+#     def initialize_options(self):
+#         pass
+
+#     def finalize_options(self):
+#         pass
+
+#     def run(self):
+#         import subprocess
+#         import sys
+#         errno = subprocess.call([sys.executable, 'runtests.py'])
+#         raise SystemExit(errno)
+
+# This is to use pyTest for running tests in the future
+# cmd_dict = versioneer.get_cmdclass()
+# cmd_dict.update({'test': PyTest})
 setup(
     # Self-descriptive entries which should always be present
     name='pyIsoP',
@@ -21,17 +38,19 @@ setup(
 
     # Which Python importable modules should be included when your package is installe  d
     packages=['pyIsoP', "pyIsoP.tests"],
+    # test_suite="pyIsoP.tests",
+    # cmdclass={test:'PyTest'},
 
     # Optional include package data to ship with your package
     # Comment out this line to prevent the files from being packaged with your software
     # Extend/modify the list to include/exclude other items as need be
-    package_data={'pyIsoP': ["data/*.dat","data/*.joblib","data/*.cif","data/*.pdb","data/*.md"]},
+    package_data={'pyIsoP': ["data/*.dat","data/*.joblib","data/*.cif","data/*.pdb","data/*.md", "tests/*"]},
 
     # Additional entries you may want simply uncomment the lines you want and fill in the data
     author_email='arungopalan2020@u.northwestern.edu',      # Author email
     # version='1.0.0',
     url='https://github.com/arung-northwestern/pyIsoP',  # Website
-    install_requires=["numpy>=1.13.3", "ase==3.16", "tqdm>=4.15", "pyevtk==1.1.1","pandas>=0.20.3","numba>=0.35","scikit-learn>=0.19.1","scipy>=1.1.0","pytest>=5.0.1"],              # Required packages, pulls from pip if needed; do not use for Conda deployment
+    install_requires=["numpy>=1.13.3", "ase==3.16", "tqdm>=4.15", "pyevtk==1.1.1","pandas>=0.20.3","numba>=0.35","scikit-learn>=0.19.1","scipy>=1.1.0","pytest>=5.0.1","dask>=2.2.0", "dask_jobqueue>=0.6.2"],              # Required packages, pulls from pip if needed; do not use for Conda deployment
     platforms=['Linux','Unix', 'Windows'],            # Valid platforms your code works on, adjust to your flavor
     python_requires=">=3.6",          # Python version restrictions
 
@@ -39,3 +58,4 @@ setup(
     # zip_safe=False,
     
 )
+# print(versioneer.get_cmdclass())

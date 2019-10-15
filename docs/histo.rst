@@ -1,4 +1,6 @@
-histo module
+.. _histogram:
+
+histogram module
 ============
 
 .. automodule:: pyIsoP.histo
