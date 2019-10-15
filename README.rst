@@ -29,7 +29,7 @@ by choosing the right isoenergy contours from the energy landscape. Please refer
     :alt: Documentation Status
 
 .. image:: https://travis-ci.com/arung-northwestern/pyIsoP.svg?branch=master
-    :target: https://travis-ci.com/arung-northwestern/pyIsoP&style=for-the-badge
+    :target: https://travis-ci.com/arung-northwestern/pyIsoP
 
 .. image:: https://badge.fury.io/py/pyIsoP.svg
     :target: https://badge.fury.io/py/pyIsoP
