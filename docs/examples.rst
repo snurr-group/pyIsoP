@@ -60,7 +60,7 @@ We have to initialize a client for Dask depending upon the machine you want to u
         .. code-block:: python
 
                 from dask_jobqueue import SLURMCluster # My HPC uses SLRURM
-                from distributed import Client         # Client class
+                from dask.distributed import Client         # Client class
                 
                 cluster=SLURMCluster(cores=4, interface='ib0', project='p#$###', queue='short', walltime='04:00:00', memory='100GB') # This is one 'job' or worker, it has 4 CPUs.
                 cluster.scale(25)  # We are starting 25 such workers, a total of 100 CPUs
@@ -185,7 +185,7 @@ Notes:
         .. code-block:: python
 
                 import numpy as np
-                x3d, ,y3d ,z3d = np.meshgrid(t1.xgrid, t1.y_grid, t1.z_grid)
+                x3d, ,y3d ,z3d = np.meshgrid(t1.x_grid, t1.y_grid, t1.z_grid, indexing='ij')
 
         -- The grid is calculated over one unit cell. If you'd like to replicate it to say 2x2x3 please use the tile_ function from Numpy to repeat the grid in blocks.
 

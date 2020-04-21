@@ -11,10 +11,9 @@ class grid3D(object):
       Calculates the energy grid for the cif file using a cpu or gpu. 
       ! Does not include the electrostatics
 
-    """
-    from numba import vectorize
+    """ 
     # * Initialize the grid object
-    def __init__(self, cif_file, spacing=1.0, cutoff=12.8, temperature=77.0, index=None):
+    def __init__(self, cif_file, spacing=1.0, cutoff=12.8, temperature=77.0, index=None, auto_init=True, coord=None, cell=None, symbols=None ):
         """ 
         Function to initiate the grid3D class object.
 
@@ -31,7 +30,7 @@ class grid3D(object):
         :param temperature: Temperature at which grid is calculated. Grid has T dependence for Feynman-Hibbs and for polyatomic probe.
     
 
-        :type index: int
+        :type index: int       
         :param index: model number if you're using .pdb file
         
         :raises: ValueError
@@ -39,146 +38,311 @@ class grid3D(object):
         :rtype: Returns an instance of the class grid3D
         
         """
-        import numpy as np
-        # from pymatgen.io.cif import CifParser
-        from ase.io import read, write
-        self.file = cif_file
-        self.spacing = spacing
-        self.cutoff = cutoff
-        #f1                                     = CifParser(cif_file)
-        frame = read(cif_file, index=None)
-        #struct                                 = f1.get_structures(primitive=False)[0]
+        if auto_init==True:
+          import numpy as np
+          # from pymatgen.io.cif import CifParser
+          from ase.io import read, write
+          self.file = cif_file
+          self.spacing = spacing
+          self.cutoff = cutoff
+          #f1                                     = CifParser(cif_file)
+          frame = read(cif_file, index=index)   
+          #struct                                 = f1.get_structures(primitive=False)[0]
 
-        # Need the box lengths to ensure the distance criterion
-        # Create the cell matrix to ensure this criterion
+          # Need the box lengths to ensure the distance criterion
+          # Create the cell matrix to ensure this criterion
 
-        # la                                     = struct.lattice.a
-        # lb                                     = struct.lattice.b
-        # lc                                     = struct.lattice.c
+          # la                                     = struct.lattice.a
+          # lb                                     = struct.lattice.b
+          # lc                                     = struct.lattice.c
 
-        # alpha                                  = struct.lattice.alpha * (np.pi/180.0)
-        # beta                                   = struct.lattice.beta * (np.pi/180.0)
-        # gamma                                  = struct.lattice.gamma * (np.pi/180.0)
-        # vol                                    = struct.volume
-        # Need the box lengths to ensure the distance criterion
-        # Create the cell matrix to ensure this criterion
+          # alpha                                  = struct.lattice.alpha * (np.pi/180.0)
+          # beta                                   = struct.lattice.beta * (np.pi/180.0)
+          # gamma                                  = struct.lattice.gamma * (np.pi/180.0)
+          # vol                                    = struct.volume
+          # Need the box lengths to ensure the distance criterion
+          # Create the cell matrix to ensure this criterion
 
-        la = frame.get_cell_lengths_and_angles()[0]
-        lb = frame.get_cell_lengths_and_angles()[1]
-        lc = frame.get_cell_lengths_and_angles()[2]
-        alpha = frame.get_cell_lengths_and_angles()[3] * (np.pi/180.0)
-        beta = frame.get_cell_lengths_and_angles()[4] * (np.pi/180.0)
-        gamma = frame.get_cell_lengths_and_angles()[5] * (np.pi/180.0)
-        vol = frame.get_volume()
-        eA = [la, 0, 0]
-        eB = [lb*np.cos(gamma), lb*np.sin(gamma), 0]
-        eC = [lc*np.cos(beta), lc*(np.cos(alpha)-np.cos(beta)*np.cos(gamma))/np.sin(gamma), vol/(la*lb*np.sin(gamma))]
+          la = frame.get_cell_lengths_and_angles()[0]
+          lb = frame.get_cell_lengths_and_angles()[1]
+          lc = frame.get_cell_lengths_and_angles()[2]
+          alpha = frame.get_cell_lengths_and_angles()[3] * (np.pi/180.0)
+          beta = frame.get_cell_lengths_and_angles()[4] * (np.pi/180.0)
+          gamma = frame.get_cell_lengths_and_angles()[5] * (np.pi/180.0)
+          vol = frame.get_volume()
+          eA = [la, 0, 0]
+          eB = [lb*np.cos(gamma), lb*np.sin(gamma), 0]
+          eC = [lc*np.cos(beta), lc*(np.cos(alpha)-np.cos(beta)*np.cos(gamma))/np.sin(gamma), vol/(la*lb*np.sin(gamma))]
 
-        # Find the perpendicular box lengths.
-        # Those are the projections of the lattice vectors on the x, y and z axes
-        # it can be shown that these lengths are equal to the inverse magnitude of the corresponding reciprocal vectors
-        #  Eg . a.i                            = 1/|a*|
+          # Find the perpendicular box lengths.
+          # Those are the projections of the lattice vectors on the x, y and z axes
+          # it can be shown that these lengths are equal to the inverse magnitude of the corresponding reciprocal vectors
+          #  Eg . a.i                            = 1/|a*|
 
-        self.lx_unit = vol / np.linalg.norm(np.cross(eB, eC))
-        self.ly_unit = vol / np.linalg.norm(np.cross(eC, eA))
-        self.lz_unit = vol / np.linalg.norm(np.cross(eA, eB))
+          self.lx_unit = vol / np.linalg.norm(np.cross(eB, eC))
+          self.ly_unit = vol / np.linalg.norm(np.cross(eC, eA))
+          self.lz_unit = vol / np.linalg.norm(np.cross(eA, eB))
 
-        # Define grid points in a unit box (Non adaptive grid)
-        # Number of grid points
-        self.nx = int(la/self.spacing)
-        self.ny = int(lb/self.spacing)
-        self.nz = int(lc/self.spacing)
+          # Define grid points in a unit box (Non adaptive grid)
+          # Number of grid points
+          self.nx = int(la/self.spacing)
+          self.ny = int(lb/self.spacing)
+          self.nz = int(lc/self.spacing)
 
-        self.nx_cells = int(np.ceil(2.0*self.cutoff/self.lx_unit))    # magic formula
-        self.ny_cells = int(np.ceil(2.0*self.cutoff/self.ly_unit))
-        self.nz_cells = int(np.ceil(2.0*self.cutoff/self.lz_unit))
+          self.nx_cells = int(np.ceil(2.0*self.cutoff/self.lx_unit))    # magic formula
+          self.ny_cells = int(np.ceil(2.0*self.cutoff/self.ly_unit))
+          self.nz_cells = int(np.ceil(2.0*self.cutoff/self.lz_unit))
 
-        frame_repeat = frame.repeat([self.nx_cells, self.ny_cells, self.nz_cells])
-        #struct.make_supercell([self.nx_cells, self.ny_cells, self.nz_cells])  # Structure is made into a super cell
+          frame_repeat = frame.repeat([self.nx_cells, self.ny_cells, self.nz_cells])
+          #struct.make_supercell([self.nx_cells, self.ny_cells, self.nz_cells])  # Structure is made into a super cell
 
-        #self.coord                             = np.array(struct.frac_coords)  # The whole thing scaled to [0,1] in all D's
-        self.coord = frame_repeat.get_scaled_positions()  # The whole thing scaled to [0,1] in all D's
+          #self.coord                             = np.array(struct.frac_coords)  # The whole thing scaled to [0,1] in all D's
+          self.coord = frame_repeat.get_scaled_positions()  # The whole thing scaled to [0,1] in all D's
 
-        #self.number_of_atoms                   = struct.num_sites
-        self.number_of_atoms = frame_repeat.get_number_of_atoms()
+          #self.number_of_atoms                   = struct.num_sites
+          self.number_of_atoms = frame_repeat.get_number_of_atoms()
 
-        # Redefine the box matrix since we made a supercell
-        # self.la                                = struct.lattice.a
-        # self.lb                                = struct.lattice.b
-        # self.lc                                = struct.lattice.c
-        # self.alpha                             = struct.lattice.alpha * (np.pi/180.0)
-        # self.beta                              = struct.lattice.beta * (np.pi/180.0)
-        # self.gamma                             = struct.lattice.gamma * (np.pi/180.0)
-        # self.vol                               = struct.volume
+          # Redefine the box matrix since we made a supercell
+          # self.la                                = struct.lattice.a
+          # self.lb                                = struct.lattice.b
+          # self.lc                                = struct.lattice.c
+          # self.alpha                             = struct.lattice.alpha * (np.pi/180.0)
+          # self.beta                              = struct.lattice.beta * (np.pi/180.0)
+          # self.gamma                             = struct.lattice.gamma * (np.pi/180.0)
+          # self.vol                               = struct.volume
 
-        self.la = frame_repeat.get_cell_lengths_and_angles()[0]
-        self.lb = frame_repeat.get_cell_lengths_and_angles()[1]
-        self.lc = frame_repeat.get_cell_lengths_and_angles()[2]
-        self.alpha = frame_repeat.get_cell_lengths_and_angles()[3] * (np.pi/180.0)
-        self.beta = frame_repeat.get_cell_lengths_and_angles()[4] * (np.pi/180.0)
-        self.gamma = frame_repeat.get_cell_lengths_and_angles()[5] * (np.pi/180.0)
-        self.vol = frame_repeat.get_volume()
+          self.la = frame_repeat.get_cell_lengths_and_angles()[0]
+          self.lb = frame_repeat.get_cell_lengths_and_angles()[1]
+          self.lc = frame_repeat.get_cell_lengths_and_angles()[2]
+          self.alpha = frame_repeat.get_cell_lengths_and_angles()[3] * (np.pi/180.0)
+          self.beta = frame_repeat.get_cell_lengths_and_angles()[4] * (np.pi/180.0)
+          self.gamma = frame_repeat.get_cell_lengths_and_angles()[5] * (np.pi/180.0)
+          self.vol = frame_repeat.get_volume()
 
-        self.A = [[self.la, 0, 0], [self.lb*np.cos(gamma), self.lb*np.sin(gamma), 0], [self.lc*np.cos(beta), self.lc *
-                                                                                       (np.cos(alpha)-np.cos(beta)*np.cos(gamma))/np.sin(gamma), self.vol/(self.la*self.lb*np.sin(gamma))]]
-        self.A = np.array(self.A)
-        self.A = self.A.T
-        self.A_inv = np.linalg.inv(self.A)
+          self.A = [[self.la, 0, 0], [self.lb*np.cos(gamma), self.lb*np.sin(gamma), 0], [self.lc*np.cos(beta), self.lc *
+                                                                                        (np.cos(alpha)-np.cos(beta)*np.cos(gamma))/np.sin(gamma), self.vol/(self.la*self.lb*np.sin(gamma))]]
+          self.A = np.array(self.A)
+          self.A = self.A.T
+          self.A_inv = np.linalg.inv(self.A)
 
-        # Intially the grids are defined only on the unit cell, which is only a tiny part of the unit box
-        # The unit box corresponds to the entire super cell
-        self.x_grid = np.linspace(0, 1.0/self.nx_cells, self.nx)
-        self.y_grid = np.linspace(0, 1.0/self.ny_cells, self.ny)
-        self.z_grid = np.linspace(0, 1.0/self.nz_cells, self.nz)
+          # Intially the grids are defined only on the unit cell, which is only a tiny part of the unit box
+          # The unit box corresponds to the entire super cell
+          self.x_grid = np.linspace(0, 1.0/self.nx_cells, self.nx)
+          self.y_grid = np.linspace(0, 1.0/self.ny_cells, self.ny)
+          self.z_grid = np.linspace(0, 1.0/self.nz_cells, self.nz)
 
-        # Shift every thing to the center of the box for the round commmand to work properly
-        self.x_grid, self.y_grid, self. z_grid = self.x_grid - 0.5, self.y_grid - 0.5, self.z_grid - 0.5
-        self.coord = self.coord - 0.5
+          # Shift every thing to the center of the box for the round commmand to work properly
+          self.x_grid, self.y_grid, self. z_grid = self.x_grid - 0.5, self.y_grid - 0.5, self.z_grid - 0.5
+          self.coord = self.coord - 0.5
 
-        # Read the corresponding  atoms information
-        # for the atoms in the MOF
+          # Read the corresponding  atoms information
+          # for the atoms in the MOF
 
-        # Get atom names in the MOF
-        self.mof_atm_names = []
-        for i in range(self.number_of_atoms):
-                # self.mof_atm_names.append(str(struct.species[i]))
-                self.mof_atm_names.append(frame_repeat.get_chemical_symbols()[i])
+          # Get atom names in the MOF
+          self.mof_atm_names = []
+          for i in range(self.number_of_atoms):
+                  # self.mof_atm_names.append(str(struct.species[i]))
+                  self.mof_atm_names.append(frame_repeat.get_chemical_symbols()[i])
 
-        self.pot = np.zeros((self.nx, self.ny, self.nz))
-        # self.pot_repeat = np.tile(self.pot, (self.nx_cells, self.ny_cells, self.nz_cells))
-        # * Total points
-        self.nx_total = int(self.nx*self.nx_cells)
-        self.ny_total = int(self.ny*self.ny_cells)
-        self.nz_total = int(self.nz*self.nz_cells)
+          self.pot = np.zeros((self.nx, self.ny, self.nz))
+          # self.pot_repeat = np.tile(self.pot, (self.nx_cells, self.ny_cells, self.nz_cells))
+          # * Total points
+          self.nx_total = int(self.nx*self.nx_cells)
+          self.ny_total = int(self.ny*self.ny_cells)
+          self.nz_total = int(self.nz*self.nz_cells)
 
-        self.N_grid_total = self.nx_total * self.ny_total * self.nz_total
+          self.N_grid_total = self.nx_total * self.ny_total * self.nz_total
 
-        # Create the xgrid ygrid and zgrid for future use
-        dx, dy, dz = 1.0/self.nx_total, 1.0/self.ny_total, 1.0/self.nz_total
-        # self.X = np.arange(0, 1 + 0.1*dx, dx, dtype='float64')
-        # self.Y = np.arange(0, 1 + 0.1*dy, dy, dtype='float64')
-        # self.Z = np.arange(0, 1 + 0.1*dz, dz, dtype='float64')
-        self.X = np.linspace(0, 1, self.nx_total)
-        self.Y = np.linspace(0, 1, self.ny_total)
-        self.Z = np.linspace(0, 1, self.nz_total)
-        # self.x = np.zeros((self.nx_total, self.ny_total, self.nz_total))
-        # self.y = np.zeros((self.nx_total, self.ny_total, self.nz_total))
-        # self.z = np.zeros((self.nx_total, self.ny_total, self.nz_total))
-        # for k in range(self.nz_total):
-        #         for j in range(self.ny_total):
-        #                 for i in range(self.nx_total):
-        #                         self.x[i, j, k] = self.X[i]
-        #                         self.y[i, j, k] = self.Y[j]
-        #                         self.z[i, j, k] = self.Z[k]
-        # for k in range(self.nz_total):
-        #         for j in range(self.ny_total):
-        #                 for i in range(self.nx_total):
-        #                         [self.x[i, j, k], self.y[i, j, k], self.z[i, j, k]] = np.dot(
-        #                             self.A, [self.x[i, j, k], self.y[i, j, k], self.z[i, j, k]])
-        self.ase = frame_repeat
-        self.pot_sphere = []
-        self.pot_total = []
-        self.Temperature = temperature
+          # Create the xgrid ygrid and zgrid for future use
+          dx, dy, dz = 1.0/self.nx_total, 1.0/self.ny_total, 1.0/self.nz_total
+          # self.X = np.arange(0, 1 + 0.1*dx, dx, dtype='float64')
+          # self.Y = np.arange(0, 1 + 0.1*dy, dy, dtype='float64')
+          # self.Z = np.arange(0, 1 + 0.1*dz, dz, dtype='float64')
+          self.X = np.linspace(0, 1, self.nx_total)
+          self.Y = np.linspace(0, 1, self.ny_total)
+          self.Z = np.linspace(0, 1, self.nz_total)
+          # self.x = np.zeros((self.nx_total, self.ny_total, self.nz_total))
+          # self.y = np.zeros((self.nx_total, self.ny_total, self.nz_total))
+          # self.z = np.zeros((self.nx_total, self.ny_total, self.nz_total))
+          # for k in range(self.nz_total):
+          #         for j in range(self.ny_total):
+          #                 for i in range(self.nx_total):
+          #                         self.x[i, j, k] = self.X[i]
+          #                         self.y[i, j, k] = self.Y[j]
+          #                         self.z[i, j, k] = self.Z[k]
+          # for k in range(self.nz_total):
+          #         for j in range(self.ny_total):
+          #                 for i in range(self.nx_total):
+          #                         [self.x[i, j, k], self.y[i, j, k], self.z[i, j,  k]] = np.dot(
+          #                             self.A, [self.x[i, j, k], self.y[i, j, k], self.z[i, j, k]])
+          self.ase = frame_repeat
+          self.pot_sphere = []
+          self.pot_total = []
+          self.Temperature = temperature
+        else:
+          import numpy as np
+          import itertools
+          # from pymatgen.io.cif import CifParser
+          # from ase.io import read, write
+          self.file = "None"
+          self.spacing = spacing
+          self.cutoff = cutoff
+          #f1                                     = CifParser(cif_file)
+          # frame = read(cif_file, index=index)
+          #struct                                 = f1.get_structures(primitive=False)[0]
+
+          # Need the box lengths to ensure the distance criterion
+          # Create the cell matrix to ensure this criterion
+
+          # la                                     = struct.lattice.a
+          # lb                                     = struct.lattice.b
+          # lc                                     = struct.lattice.c
+
+          # alpha                                  = struct.lattice.alpha * (np.pi/180.0)
+          # beta                                   = struct.lattice.beta * (np.pi/180.0)
+          # gamma                                  = struct.lattice.gamma * (np.pi/180.0)
+          # vol                                    = struct.volume
+          # Need the box lengths to ensure the distance criterion
+          # Create the cell matrix to ensure this criterion
+
+          la = cell[0]     #frame.get_cell_lengths_and_angles()[0]
+          lb = cell[1]     #frame.get_cell_lengths_and_angles()[1]
+          lc = cell[2]     #frame.get_cell_lengths_and_angles()[2]
+          alpha =cell[3]* (np.pi/180.0) #frame.get_cell_lengths_and_angles()[3] * (np.pi/180.0)
+          beta = cell[4]* (np.pi/180.0) #frame.get_cell_lengths_and_angles()[4] * (np.pi/180.0)
+          gamma =cell[5]* (np.pi/180.0) #frame.get_cell_lengths_and_angles()[5] * (np.pi/180.0)
+          vol =  la*lb*lc*np.sqrt(1+2*np.cos(alpha)*np.cos(beta)*np.cos(gamma) - np.cos(alpha)**2- np.cos(beta)**2- np.cos(gamma)**2)# frame.get_volume()
+         
+          eA = [la, 0, 0]
+          eB = [lb*np.cos(gamma), lb*np.sin(gamma), 0]
+          eC = [lc*np.cos(beta), lc*(np.cos(alpha)-np.cos(beta)*np.cos(gamma))/np.sin(gamma), vol/(la*lb*np.sin(gamma))]
+          A=[eA, eB, eC]
+          A = np.array(A)
+          A = A.T
+          A_inv = np.linalg.inv(A)
+          # Find the perpendicular box lengths.
+          # Those are the projections of the lattice vectors on the x, y and z axes
+          # it can be shown that these lengths are equal to the inverse magnitude of the corresponding reciprocal vectors
+          #  Eg . a.i                            = 1/|a*|
+
+          self.lx_unit = vol / np.linalg.norm(np.cross(eB, eC))
+          self.ly_unit = vol / np.linalg.norm(np.cross(eC, eA))
+          self.lz_unit = vol / np.linalg.norm(np.cross(eA, eB))
+
+          # Define grid points in a unit box (Non adaptive grid)
+          # Number of grid points
+          self.nx = int(la/self.spacing)
+          self.ny = int(lb/self.spacing)
+          self.nz = int(lc/self.spacing)
+
+          self.nx_cells = int(np.ceil(2.0*self.cutoff/self.lx_unit))    # magic formula
+          self.ny_cells = int(np.ceil(2.0*self.cutoff/self.ly_unit))
+          self.nz_cells = int(np.ceil(2.0*self.cutoff/self.lz_unit))
+          
+          scaled_coord =np.dot(A_inv, coord.T).T # * These corodinates are in a unit space
+          # * Make sure the coordinates are in a unit box [0-1] also, for centering later.
+          scaled_coord = scaled_coord - np.floor(scaled_coord) # * Shift everything to a [0-1] box before replicating
+
+          a1=range(self.nx_cells)
+          b1=range(self.ny_cells)
+          c1=range(self.nz_cells)
+          cell_index = itertools.product(a1,b1,c1)
+          # repeat_coord = []
+          # * These coordinates are not from [0-1]
+          self.coord= np.array([c+scaled_coord for c in cell_index]).reshape(self.nx_cells*self.ny_cells*self.nz_cells*len(scaled_coord),3) # now these coordinates from [0-nx_cells,0-ny_cells,0-nz_cells]
+          
+          # *These coordinates are from [0-1]
+          self.coord = self.coord / np.array([self.nx_cells, self.ny_cells, self.nz_cells])
+
+
+          # frame_repeat = frame.repeat([self.nx_cells, self.ny_cells, self.nz_cells])
+          #struct.make_supercell([self.nx_cells, self.ny_cells, self.nz_cells])  # Structure is made into a super cell
+
+          #self.coord                             = np.array(struct.frac_coords)  # The whole thing scaled to [0,1] in all D's
+          # self.coord = frame_repeat.get_scaled_positions()  # The whole thing scaled to [0,1] in all D's
+
+          #self.number_of_atoms                   = struct.num_sites
+          self.number_of_atoms = self.nx_cells*self.ny_cells*self.nz_cells*len(scaled_coord)#frame_repeat.get_number_of_atoms()
+
+          # Redefine the box matrix since we made a supercell
+          # self.la                                = struct.lattice.a
+          # self.lb                                = struct.lattice.b
+          # self.lc                                = struct.lattice.c
+          # self.alpha                             = struct.lattice.alpha * (np.pi/180.0)
+          # self.beta                              = struct.lattice.beta * (np.pi/180.0)
+          # self.gamma                             = struct.lattice.gamma * (np.pi/180.0)
+          # self.vol                               = struct.volume
+
+          self.la = la*self.nx_cells # frame_repeat.get_cell_lengths_and_angles()[0]
+          self.lb = lb*self.ny_cells  # frame_repeat.get_cell_lengths_and_angles()[1]
+          self.lc = lc*self.nz_cells  # frame_repeat.get_cell_lengths_and_angles()[2]
+          self.alpha = alpha # frame_repeat.get_cell_lengths_and_angles()[3] * (np.pi/180.0)
+          self.beta = beta # frame_repeat.get_cell_lengths_and_angles()[4] * (np.pi/180.0)
+          self.gamma = gamma # frame_repeat.get_cell_lengths_and_angles()[5] * (np.pi/180.0)
+          self.vol = self.la*self.lb*self.lc*np.sqrt(1+2*np.cos(self.alpha)*np.cos(self.beta)*np.cos(self.gamma) - np.cos(self.alpha)**2- np.cos(self.beta)**2- np.cos(self.gamma)**2)# frame.get_volume()
+
+          self.A = [[self.la, 0, 0], [self.lb*np.cos(gamma), self.lb*np.sin(gamma), 0], [self.lc*np.cos(beta), self.lc *
+                                                                                        (np.cos(alpha)-np.cos(beta)*np.cos(gamma))/np.sin(gamma), self.vol/(self.la*self.lb*np.sin(gamma))]]
+          self.A = np.array(self.A)
+          self.A = self.A.T
+          self.A_inv = np.linalg.inv(self.A)
+
+          # Intially the grids are defined only on the unit cell, which is only a tiny part of the unit box
+          # The unit box corresponds to the entire super cell
+          self.x_grid = np.linspace(0, 1.0/self.nx_cells, self.nx)
+          self.y_grid = np.linspace(0, 1.0/self.ny_cells, self.ny)
+          self.z_grid = np.linspace(0, 1.0/self.nz_cells, self.nz)
+
+          # Shift every thing to the center of the box for the round commmand to work properly
+          self.x_grid, self.y_grid, self. z_grid = self.x_grid - 0.5, self.y_grid - 0.5, self.z_grid - 0.5
+          self.coord = self.coord - 0.5
+
+          # Read the corresponding  atoms information
+          # for the atoms in the MOF
+
+          # Get atom names in the MOF
+          self.mof_atm_names = np.repeat(symbols, self.nx_cells*self.ny_cells*self.nz_cells, axis=0)
+          # self.mof_atm_names = []
+          # for i in range(self.number_of_atoms):
+          #         # self.mof_atm_names.append(str(struct.species[i]))
+          #         self.mof_atm_names.append(frame_repeat.get_chemical_symbols()[i])
+
+          self.pot = np.zeros((self.nx, self.ny, self.nz))
+          # self.pot_repeat = np.tile(self.pot, (self.nx_cells, self.ny_cells, self.nz_cells))
+          # * Total points
+          self.nx_total = int(self.nx*self.nx_cells)
+          self.ny_total = int(self.ny*self.ny_cells)
+          self.nz_total = int(self.nz*self.nz_cells)
+
+          self.N_grid_total = self.nx_total * self.ny_total * self.nz_total
+
+          # Create the xgrid ygrid and zgrid for future use
+          dx, dy, dz = 1.0/self.nx_total, 1.0/self.ny_total, 1.0/self.nz_total
+          # self.X = np.arange(0, 1 + 0.1*dx, dx, dtype='float64')
+          # self.Y = np.arange(0, 1 + 0.1*dy, dy, dtype='float64')
+          # self.Z = np.arange(0, 1 + 0.1*dz, dz, dtype='float64')
+          self.X = np.linspace(0, 1, self.nx_total)
+          self.Y = np.linspace(0, 1, self.ny_total)
+          self.Z = np.linspace(0, 1, self.nz_total)
+          # self.x = np.zeros((self.nx_total, self.ny_total, self.nz_total))
+          # self.y = np.zeros((self.nx_total, self.ny_total, self.nz_total))
+          # self.z = np.zeros((self.nx_total, self.ny_total, self.nz_total))
+          # for k in range(self.nz_total):
+          #         for j in range(self.ny_total):
+          #                 for i in range(self.nx_total):
+          #                         self.x[i, j, k] = self.X[i]
+          #                         self.y[i, j, k] = self.Y[j]
+          #                         self.z[i, j, k] = self.Z[k]
+          # for k in range(self.nz_total):
+          #         for j in range(self.ny_total):
+          #                 for i in range(self.nx_total):
+          #                         [self.x[i, j, k], self.y[i, j, k], self.z[i, j, k]] = np.dot(
+          #                             self.A, [self.x[i, j, k], self.y[i, j, k], self.z[i, j, k]])
+          # self.ase = frame_repeat
+          self.pot_sphere = []
+          self.pot_total = []
+          self.Temperature = temperature
+
     # * Compute energy grid using Dask using the objects from PyIsoP
     # * Currently implemented only for Lennard-Jones interactions
     def grid_calc_dask(grid_obj, ff_obj):
@@ -212,7 +376,7 @@ class grid3D(object):
           import numpy as np 
           import dask.array as da
           # gps = da.stack(da.meshgrid(da.linspace(-0.5,0.5, t1.nx_total), da.linspace(-0.5,0.5, t1.ny_total),da.linspace(-0.5,0.5, t1.nz_total)), -1).reshape(-1, 3)
-          gps = da.stack(da.meshgrid(t1.x_grid, t1.y_grid,t1.z_grid), -1).reshape(-1, 3) # * Only the unit cell.
+          gps = da.stack(da.meshgrid(t1.x_grid, t1.y_grid,t1.z_grid, indexing='ij'), -1).reshape(-1, 3) # * Only the unit cell.
           gps =gps.rechunk(10000,3)
           grid = da.apply_along_axis(func1d=grid_point_energy, frameda=da.from_array(t1.coord), Ada=da.from_array(t1.A), sigda=da.from_array(f1.sigma_array), epsda=da.from_array(f1.epsilon_array), axis=1, arr=gps)
           return grid
@@ -259,7 +423,7 @@ class grid3D(object):
           import numpy as np 
           import dask.array as da
           # gps = da.stack(da.meshgrid(da.linspace(-0.5,0.5, t1.nx_total), da.linspace(-0.5,0.5, t1.ny_total),da.linspace(-0.5,0.5, t1.nz_total)), -1).reshape(-1, 3)
-          gps = da.stack(da.meshgrid(t1.x_grid, t1.y_grid,t1.z_grid), -1).reshape(-1, 3) # * Only the unit cell.
+          gps = da.stack(da.meshgrid(t1.x_grid, t1.y_grid,t1.z_grid, indexing='ij'), -1).reshape(-1, 3) # * Only the unit cell.
           gps =gps.rechunk(10000,3)
           grid = da.apply_along_axis(func1d=grid_point_distance, frameda=da.from_array(t1.coord),  Ada=da.from_array(t1.A),sig = da.from_array(f1.sigma), sigda=da.from_array(f1.sigma_array), epsda=da.from_array(f1.epsilon_array), axis=1, arr=gps)
           return grid
