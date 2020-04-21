@@ -96,8 +96,8 @@ class machlearn:
 
         ml_obj.n1_data               = pd.read_csv(data_file, delimiter=',', header=None, names=["log(P)", "Vf", "lcd", "pld", "n1"])
         msk                          = np.random.rand(len(ml_obj.n1_data)) < (1-train_fraction)
-        ml_obj.X_tr, ml_obj.y_tr     = ml_obj.n1_data[~msk][['log(P)', 'Vf', 'lcd', 'pld']].as_matrix(), ml_obj.n1_data[~msk][['n1']].as_matrix()
-        ml_obj.X_test, ml_obj.y_test = ml_obj.n1_data[msk][['log(P)', 'Vf', 'lcd', 'pld']].as_matrix(), ml_obj.n1_data[msk][['n1']].as_matrix()
+        ml_obj.X_tr, ml_obj.y_tr     = ml_obj.n1_data[~msk][['log(P)', 'Vf', 'lcd', 'pld']].values, ml_obj.n1_data[~msk][['n1']].values
+        ml_obj.X_test, ml_obj.y_test = ml_obj.n1_data[msk][['log(P)', 'Vf', 'lcd', 'pld']].values, ml_obj.n1_data[msk][['n1']].values
         ml_obj.gp.fit(ml_obj.X_tr, ml_obj.y_tr)
-        ml_obj.X_test, ml_obj.y_test = ml_obj.n1_data[msk][['log(P)', 'Vf', 'lcd', 'pld']].as_matrix(), ml_obj.n1_data[msk][['n1']].as_matrix()
+        ml_obj.X_test, ml_obj.y_test = ml_obj.n1_data[msk][['log(P)', 'Vf', 'lcd', 'pld']].values, ml_obj.n1_data[msk][['n1']].values
         return ml_obj
